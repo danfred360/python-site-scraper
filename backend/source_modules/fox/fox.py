@@ -2,7 +2,7 @@
 Author: Daniel Frederick
 Date: May 21, 2020
 
-fox news site specific web scraper - beautifulsoup 4 instead of lxml
+fox news site specific web scraper
 '''
 
 '''
@@ -12,10 +12,7 @@ https://api.foxnews.com/search/web?q=trump&siteSearch=foxnews.com&siteSearchFilt
 '''
 
 from lxml import html
-from bs4 import BeautifulSoup
 import requests
-import os
-import datetime
 import json
 
 url = 'https://www.foxnews.com/'
@@ -41,23 +38,41 @@ class Query:
         # get array of result article objects
         results = parsed_query_json['items']
         articles = []
-
+        # loop through results and pick out articles only, then create an article instance and add it to an array
         for i in results:
             metatags = i['pagemap']['metatags'][0]
-            print(metatags['pagetype'])
             if i['pagemap']['metatags'][0]['pagetype'] == 'category':
                 continue
             else:
-                article = Article(i['link'], i['pagemap']['metatags'])
+                article = Article(i['link'], i['pagemap']['metatags'][0])
                 articles.append(article)
         return articles
     
 
+    # article class
 class Article:
     def __init__(self, url, metatags):
-        pass
+        self.metatags = metatags
+        self.url = url
+        self.article_content = self.getArticleContent()
+
+    # returns a string of article content
+    def getArticleContent(self):
+        article_page =  requests.get(url)
+        article_tree = html.fromstring(article_page.content)
+
+        article_content_p_list = article_tree.xpath('//div[@class="article-content"]//p')
+        article_content = '' 
+        for i in article_content_p_list:
+            article_content = article_content + i.text_content()
+        
+        return article_content
+
+
 
 # run stuff ------------------------------------------------------------------------------------------------------------------
 print('\n-------------------------------------------------------------------------------------------------------------\n')
 temp = Query('trump')
-print(len(temp.result_articles))
+for i in temp.result_articles:
+    print(i.metatags['og:title'])
+    print('\n')
